@@ -25,6 +25,7 @@ from tags_window_design import Ui_TagsWindow
 current_dir = os.path.dirname(os.path.abspath(__file__))
 tesseract_path = os.path.join(current_dir, 'Tesseract-OCR', 'tesseract.exe')
 readme_path = os.path.join(current_dir, 'README.txt')
+poppler_path = os.path.join(current_dir, 'poppler', 'poppler-25.07.0', 'Library', 'bin')
 
 
 class TagsManager:
@@ -136,7 +137,6 @@ class TagsWindow(QtWidgets.QMainWindow):
 
     def _add_tag(self, tag_area):
         """Добавляет новый тег"""
-        self.logger.debug(f'ДОБАВЛЯЕМ НОВЫЙ ТЭГ: {tag_area}')
         if tag_area == 'name_tags':
             new_tag = self.ui.tag_lineEdit.text().strip()
             if new_tag:
@@ -269,6 +269,7 @@ class PEDSorterApp(QtWidgets.QMainWindow):
     def traverse_directory(self):
         '''Обходит выбранную директорию и все поддиректории.'''
         QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.BusyCursor))
+        self.logger.debug("=== НАЧАЛО traverse_directory ===")
         files_count = 0
         self.table_is_full = False
         self.ui.Rename_Button.setEnabled(False)
@@ -283,31 +284,51 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                 type = self.UNKNOWN
                 new_name = self.UNKNOWN
                 mask = self.UNKNOWN
-
+                estimate_number = ''
+                excel_text_cache = None
+                pdf_text_cache = None
                 # выяснить, что за тип:
                 for type_id, type_data in self.tags_manager.tags_data.items():
+                    found = False
                     if self.ui.search_in_name_checkBox.isChecked():
                         file_parts = re.split(r'[_\-. ]+', filename.lower())
-                        if any(tag.lower() in file_parts for tag in type_data["name_tags"]): #распознавание тэгов в имени
-                            type = type_data["type"]
-                            mask = type_data["mask"]
+                        if any(tag.lower() in file_parts for tag in type_data['name_tags']):
+                            type = type_data['type']
+                            mask = type_data['mask']
                             if type not in ['Подтверждающие документы', 'Расчеты на прочие затраты']:
+                                found = True
                                 break
-                    if self.ui.search_in_file_checkBox.isChecked():
-                        presence_tags_in_file = self.check_if_tags_in_file(type_data["internal_tags"], filepath)
-                        if presence_tags_in_file:
-                            type = type_data["type"]
-                            mask = type_data["mask"]
-                            if type not in ['Подтверждающие документы', 'Расчеты на прочие затраты']:
-                                break
-
+                    if not found and self.ui.search_in_file_checkBox.isChecked():
+                        # Для PDF - кэшируем текст
+                        if extension == '.pdf':
+                            name_without_ext = os.path.splitext(filename)[0]
+                            if not name_without_ext + '.xls' in files and not name_without_ext + '.xlsx' in files:
+                                if pdf_text_cache is None:
+                                    pdf_text_cache = self.extract_text_from_pdf_first_page(filepath)
+                                presence_tags = self.check_tags_in_pdf(pdf_text_cache, type_data["internal_tags"])
+                        # Для Excel
+                        elif extension in ['.xls', '.xlsx']:
+                            if excel_text_cache is None:
+                                excel_text_cache = self.read_xls_xlsx_file(filepath)
+                            presence_tags = self.check_tags_in_excel(excel_text_cache, type_data["internal_tags"])
+                        if extension in ['.xls', '.xlsx', '.pdf']:
+                            if presence_tags:
+                                type = type_data['type']
+                                mask = type_data['mask']
+                                if type not in ['Подтверждающие документы', 'Расчеты на прочие затраты']:
+                                    break
                 # создание имен:
-                if type == 'Локальная смета':
-                    new_name = self.create_name_for_1_local_estimate(filepath, filename)
-                if type == 'Объектная смета':
-                    new_name = self.create_name_for_2_object_estimate(filepath, filename)
-                if type == 'Сводный сметный расчет':
-                    new_name = self.create_name_for_3_summary_estimate(filepath, filename)
+                if type_id in ['1', '2', '3']:
+                    if extension == '.pdf':
+                        name_without_ext = os.path.splitext(filename)[0]
+                        if not name_without_ext + '.xls' in files and not name_without_ext + '.xlsx' in files:
+                            new_name_result = self.create_name_for_123_local_object_summary_estimates(filepath, filename, pdf_text_cache, type_id)
+                    elif extension in ['.xls', '.xlsx']:
+                        new_name_result = self.create_name_for_123_local_object_summary_estimates(filepath, filename, excel_text_cache, type_id)
+                    if extension in ['.xls', '.xlsx', '.pdf']:
+                        new_name = new_name_result[0]
+                        estimate_number = new_name_result[1]
+
                 if type == 'Сводный реестр сметной документации':
                     new_name = self.create_name_for_4_register_of_estimates(filepath, filename)
                 if type == 'Сметные расчеты на отдельные виды затрат':
@@ -324,7 +345,8 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                     'new_name': new_name,
                     'mask': mask,
                     'extension': extension,
-                    'filepath': filepath
+                    'filepath': filepath,
+                    'estimate_number': estimate_number,
                     }
                 files_count += 1
                 percent_processed = files_count * 100 // len(files)
@@ -333,78 +355,75 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                 QtWidgets.QApplication.processEvents()
         self.share_info_from_xls_to_duplicates()
         self.populate_table()
+        self.logger.debug("=== КОНЕЦ traverse_directory ===")
+
+    def check_tags_in_pdf(self, text, tags):
+        """
+        Проверяет наличие тегов в тексте
+        """
+        if not text:
+            return False
+        for tag in tags:
+            try:
+                if re.search(tag, text, re.IGNORECASE):
+                    return True
+            except re.error:
+                if tag.lower() in text:
+                    return True
+        return False
+
+    def check_tags_in_excel(self, file_data, tags):
+        """
+        Проверяет наличие тегов в Excel файле
+        """
+        if file_data is None or file_data.empty:
+            return False
+        
+        for i in range(len(file_data)):
+            row_data = ''.join([str(x).lower() for x in file_data.iloc[i].values.tolist() if pd.notna(x)])
+            for tag in tags:
+                try:
+                    if re.search(tag, row_data, re.IGNORECASE):
+                        return True
+                except re.error:
+                    if tag.lower() in row_data:
+                        return True
+        return False
 
     def extract_text_from_pdf_first_page(self, pdf_path, lang='rus+eng'):
         """
         Извлекает текст с первой страницы PDF используя OCR
         """
         try:
-            images = convert_from_path(pdf_path, first_page=1, last_page=1, dpi=300)
+            # Конвертируем первую страницу PDF в изображение
+            images = convert_from_path(
+                pdf_path, 
+                first_page=1, 
+                last_page=1, 
+                dpi=300,
+                poppler_path=poppler_path
+            )
+            
             if not images:
                 return ""
 
+            # Сохраняем временное изображение
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
                 images[0].save(temp_file.name, 'JPEG')
                 temp_image_path = temp_file.name
-
+            
+            # Распознаем текст с изображения
+            pytesseract.pytesseract.tesseract_cmd = tesseract_path
             text = pytesseract.image_to_string(Image.open(temp_image_path), lang=lang)
 
+            # Удаляем временный файл
             os.unlink(temp_image_path)
-            
+            self.logger.debug(f"прочили PDF {pdf_path}")
             return text.lower()
             
         except Exception as e:
             print(f"Ошибка OCR обработки {pdf_path}: {str(e)}")
             return ""
-
-    def check_tags_in_pdf(self, pdf_path, tags):
-        """
-        Проверяет наличие тегов в PDF файле
-        """
-        # Извлекаем текст с первой страницы
-        pdf_text = self.extract_text_from_pdf_first_page(pdf_path)
-        
-        if not pdf_text:
-            return False
-        
-        # Проверяем каждый тег
-        for tag in tags:
-            # Если тег - регулярное выражение
-            if isinstance(tag, str) and any(c in tag for c in ['[', '(', '*', '+', '?', '{', '}']):
-                try:
-                    if re.search(tag, pdf_text, re.IGNORECASE):
-                        return True
-                except re.error:
-                    # Если regex невалиден, ищем как обычный текст
-                    if tag.lower() in pdf_text:
-                        return True
-            else:
-                # Обычный текстовый поиск
-                if tag.lower() in pdf_text:
-                    return True
-        
-        return False
-
-    def check_if_tags_in_file(self, internal_tags, filepath):
-        """Проверяет, встречаются ли тэги в файле (поддерживает PDF и Excel)"""
-        
-        # Для PDF файлов используем OCR
-        if str(filepath).lower().endswith('.pdf'):
-            return self.check_tags_in_pdf(filepath, internal_tags)
-        
-        # Для Excel файлов - обычная обработка
-        file = self.read_xls_xlsx_file(filepath)
-        if file is not None and not file.empty:
-            for i in range(len(file)):
-                row_data = ''.join([str(x).lower() for x in file.iloc[i].values.tolist() if pd.notna(x)])
-                for tag in internal_tags:
-                    try:
-                        if re.search(tag, row_data, re.IGNORECASE):
-                            return row_data
-                    except re.error:
-                        if tag.lower() in row_data:
-                            return row_data
-        return False
 
     def share_info_from_xls_to_duplicates(self):
         """Если находятся файлы одинакового имени, но разного расширения, эта функция
@@ -426,6 +445,7 @@ class PEDSorterApp(QtWidgets.QMainWindow):
             self.logger.error(f'Файл не существует: {filepath}')
             return None
         try:
+            self.logger.debug(f"прочили excel {filepath}")
             if str(filepath).lower().endswith('.xlsx'):
                 return self._read_xlsx_visible_sheet(filepath)
             elif str(filepath).lower().endswith('.xls'):
@@ -505,72 +525,49 @@ class PEDSorterApp(QtWidgets.QMainWindow):
         except:
             return None
 
-    def create_name_for_1_local_estimate(self, filepath, filename):
-        """Создает новое имя для локальной сметы: """
-        TARGET_TEXT = ['локальн', 'смета', 'сметный']
-        ESTIMATE_NUMBER_UNKNOWN = '??-??-??'
-        estimate_number = ESTIMATE_NUMBER_UNKNOWN
+    def create_name_for_123_local_object_summary_estimates(self, filepath, filename, file_data, type_id):
+        """Создает новые имена для лоальных, объектных, сводных смет"""
+        if type_id == '1':
+            ESTIMATE_NUMBER_UNKNOWN = '??-??-??'
+            const = 'ЛС'
+            number_mask = r'^\d{1,2}-\d{1,2}(?:-\d{1,2})?$'
+        elif type_id == '2':
+            ESTIMATE_NUMBER_UNKNOWN = '??-??'
+            const = 'ОС'
+            number_mask = r'^\d{1,2}(?:-\d{1,2})?$'
+        elif type_id == '3':
+            ESTIMATE_NUMBER_UNKNOWN = '??'
+            const = 'ССР'
+            number_mask = r'^\d{1,2}$'
+
+        tags = self.tags_manager.tags_data[type_id]["internal_tags"]
+        lines_to_check = 20 # в скольких первых строках искать совпадения. весь файл = len(file)
         version = self.DEFAULT_VERSION
         version_number = self.DEFAULT_VERSION_NUMBER
-        const = 'ЛС'
-        file = self.read_xls_xlsx_file(filepath)
-        lines_to_chek = 20 #в скольких первых строках искать совпадения. весь файл = len(file)
-        if file is not None and not file.empty:
-            for i in range(lines_to_chek):
-                row_data = ''.join([str(x).lower() for x in file.iloc[i].values.tolist() if pd.notna(x)])
-                for tag in list(map(lambda x: x.lower(), TARGET_TEXT)):
-                    if tag in row_data:
-                        if '№' in row_data:
-                            number = row_data.split('№')[-1].strip()
-                            if re.search(r'^\d{1,2}-\d{1,2}(?:-\d{1,2})?$', number):
-                                estimate_number = number
-                                break
-        return f'{const}-{estimate_number}-{version}{version_number}-(ex. {filename[:self.EX_NAME_LENGTH]}..)'
-
-    def create_name_for_2_object_estimate(self, filepath, filename):
-        """Создает новое имя для объектной сметы: """
-        TARGET_TEXT = ['объектн', 'смета', 'сметный']
-        ESTIMATE_NUMBER_UNKNOWN = '??-??'
         estimate_number = ESTIMATE_NUMBER_UNKNOWN
-        DEFAULT_VERSION = 'БАЗ'
-        version = DEFAULT_VERSION
-        version_number = self.DEFAULT_VERSION_NUMBER
-        const = 'ОС'
-        file = self.read_xls_xlsx_file(filepath)
-        lines_to_chek = 20 #в скольких первых строках искать совпадения. весь файл = len(file)
-        if file is not None and not file.empty:
-            for i in range(lines_to_chek):
-                row_data = ''.join([str(x).lower() for x in file.iloc[i].values.tolist() if pd.notna(x)])
-                for tag in list(map(lambda x: x.lower(), TARGET_TEXT)):
-                    if tag in row_data:
-                        if '№' in row_data:
-                            number = row_data.split('№')[-1].strip()
-                            if re.search(r'^\d{1,2}(?:-\d{1,2})?$', number):
-                                estimate_number = number
-                                break
-        return f'{const}-{estimate_number}-{version}{version_number}-(ex. {filename[:self.EX_NAME_LENGTH]}..)'
+        candidate = ''
+        data_lines = []
 
-    def create_name_for_3_summary_estimate(self, filepath, filename):
-        """Создает новое имя для сводного сметного расчета: """
-        TARGET_TEXT = ['сводн', 'смета', 'сметный']
-        ESTIMATE_NUMBER_UNKNOWN = '??'
-        estimate_number = ESTIMATE_NUMBER_UNKNOWN
-        version = self.DEFAULT_VERSION
-        version_number = self.DEFAULT_VERSION_NUMBER
-        const = 'ССР'
-        file = self.read_xls_xlsx_file(filepath)
-        lines_to_chek = 20 #в скольких первых строках искать совпадения. весь файл = len(file)
-        if file is not None and not file.empty:
-            for i in range(lines_to_chek):
-                row_data = ''.join([str(x).lower() for x in file.iloc[i].values.tolist() if pd.notna(x)])
-                for tag in list(map(lambda x: x.lower(), TARGET_TEXT)):
-                    if tag in row_data:
-                        if '№' in row_data:
-                            number = row_data.split('№')[-1].strip()
-                            if re.search(r'^\d{1,2}$', number):
-                                estimate_number = number
-                                break
-        return f'{const}-{estimate_number}-{version}{version_number}-(ex. {filename[:self.EX_NAME_LENGTH]}..)'
+        if filename.endswith(('.xls', '.xlsx')):
+            if file_data is not None and not file_data.empty:
+                for i in range(min(lines_to_check, len(file_data))):
+                    row_data = ''.join([str(x).lower() for x in file_data.iloc[i].values.tolist() if pd.notna(x)])
+                    data_lines.append(row_data)
+        elif filename.endswith('.pdf'):
+            data_lines = file_data.split('\n')[:lines_to_check]
+        else:
+            return None
+
+        for row_data in data_lines:
+            for tag in map(str.lower, tags):
+                if re.search(tag, row_data, re.IGNORECASE):
+                    candidate = row_data.split('№')[-1].strip()
+                    if re.search(number_mask, candidate):
+                        estimate_number = candidate
+                        break
+            if candidate:
+                break
+        return (f'{const}-{estimate_number}-{version}{version_number}-(ex. {filename[:self.EX_NAME_LENGTH]}..)', candidate)
 
     def create_name_for_4_register_of_estimates(self, filepath, filename):
         version = self.DEFAULT_VERSION
@@ -616,6 +613,7 @@ class PEDSorterApp(QtWidgets.QMainWindow):
             self.ui.Table.setItem(row, 1, QtWidgets.QTableWidgetItem(data['type']))
             self.ui.Table.setItem(row, 2, QtWidgets.QTableWidgetItem(data['mask']))
             self.ui.Table.setItem(row, 3, QtWidgets.QTableWidgetItem(data['new_name'] + data['extension']))
+            self.ui.Table.setItem(row, 5, QtWidgets.QTableWidgetItem(data['estimate_number']))
 
             #ЦВЕТА и чекбоксы!
             checkbox_item = QtWidgets.QTableWidgetItem()
@@ -839,5 +837,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 
