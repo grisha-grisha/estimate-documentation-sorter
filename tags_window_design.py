@@ -56,7 +56,7 @@ class Ui_TagsWindow(object):
         self.label_2.setGeometry(QRect(0, 30, 351, 16))
         self.type_label = QLabel(self.frame)
         self.type_label.setObjectName(u"type_label")
-        self.type_label.setGeometry(QRect(110, 10, 311, 20))
+        self.type_label.setGeometry(QRect(110, 10, 311, 16))
         font = QFont()
         font.setBold(True)
         font.setItalic(False)
@@ -117,6 +117,6 @@ class Ui_TagsWindow(object):
         self.label_5.setText(QCoreApplication.translate("TagsWindow", u"\u0432 \u0438\u043c\u0435\u043d\u0438 \u0444\u0430\u0439\u043b\u0430:", None))
         self.add_tag_2.setText(QCoreApplication.translate("TagsWindow", u"\u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c", None))
         self.delete_tag_2.setText(QCoreApplication.translate("TagsWindow", u"\u0443\u0434\u0430\u043b\u0438\u0442\u044c", None))
-        self.label_6.setText(QCoreApplication.translate("TagsWindow", u"\u0432\u043d\u0443\u0442\u0440\u0438 \u0444\u0430\u0439\u043b\u0430 (\u0435\u0441\u043b\u0438 \u043e\u043d '.xls', '.xlsx'):", None))
+        self.label_6.setText(QCoreApplication.translate("TagsWindow", u"\u0432\u043d\u0443\u0442\u0440\u0438 \u0444\u0430\u0439\u043b\u0430 (Excel \u0438 PDF):", None))
     # retranslateUi
 

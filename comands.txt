@@ -1,0 +1,5 @@
+# для преобразования ui в py:
+
+pyside6-uic PED_design.ui -o PED_design.py 
+
+pyside6-uic tags_window_design.ui -o tags_window_design.py

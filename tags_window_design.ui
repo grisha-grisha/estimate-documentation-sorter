@@ -257,7 +257,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>внутри файла (если он '.xls', '.xlsx'):</string>
+     <string>внутри файла (Excel и PDF):</string>
     </property>
    </widget>
    <widget class="Line" name="line_2">
