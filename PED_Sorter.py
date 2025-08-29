@@ -188,40 +188,38 @@ class PEDSorterApp(QtWidgets.QMainWindow):
         self.directory = ''
         self.tags_manager = TagsManager()
         self._populate_files_list()
-        self.EX_NAME_LENGTH = 15
         self.DEFAULT_VERSION = 'БАЗ'
         self.DEFAULT_VERSION_NUMBER = ''
         self.TYPES_7_AND_THEIR_CODENAMES = {
-            'Расчеты на прочие затраты': '?',
-            'Перевозка': 'Перевозка',
-            'Командировочные расходы': 'Командировочные',
-            'Перебазировка': 'Перебазировка',
-            'Затраты на охрану труда': 'ОхранаТруда',
-            'Затраты на проведение пусконаладочных работ (ПНР)': 'ПНР',
-            'Устройство дорог': 'УстройствоДорог',
-            'Дополнительные затраты при производстве работ в зимнее время (ЗУ)': 'ЗУ',
-            'Плата за негативное воздействие на окружающую среду (НВОС)': 'НВОС',
-            'Транспортировка': 'Транспортировка',
-            'Плавсредства': 'Плавсредства',
-            'Затраты на мониторинг компонентов окружающей среды (ПЭМ)': 'ПЭМ'
+            '7.1': ['Расчеты на прочие затраты', '?', 1],
+            '7.2': ['Перевозка', 'Перевозка', 1],
+            '7.3': ['Командировочные расходы', 'Командировочные', 1],
+            '7.4': ['Перебазировка', 'Перебазировка', 1],
+            '7.5': ['Затраты на охрану труда', 'ОхранаТруда', 1],
+            '7.6': ['Затраты на проведение пусконаладочных работ (ПНР)', 'ПНР', 1],
+            '7.7': ['Устройство дорог', 'УстройствоДорог', 1],
+            '7.8': ['Дополнительные затраты при производстве работ в зимнее время (ЗУ)', 'ЗУ', 1],
+            '7.9': ['Плата за негативное воздействие на окружающую среду (НВОС)', 'НВОС', 1],
+            '7.10': ['Транспортировка', 'Транспортировка', 1],
+            '7.11': ['Плавсредства', 'Плавсредства', 1],
+            '7.12': ['Затраты на мониторинг компонентов окружающей среды (ПЭМ)', 'ПЭМ', 1]
         }
-        self.TYPES_8_AND_THEIR_CODENAMSE = {
-            'Подтверждающие документы': '?',
-            'Ведомость объемов работ': 'ВОР',
-            'Дефектная ведомость': 'ДВ',
-            'Коммерческое предложение': 'КП',
-            'Транспортная схема': 'ТС',
-            'Обоснование к расчету прочих затрат': 'ОбоснованиеПрочих',
-            'Конъюнктурный анализ': 'КА'
+        self.TYPES_8_AND_THEIR_CODENAMES = {
+            '8.1': ['Подтверждающие документы', '?', 1],
+            '8.2': ['Ведомость объемов работ', 'ВОР', 1],
+            '8.3': ['Дефектная ведомость', 'ДВ', 1],
+            '8.4': ['Коммерческое предложение', 'КП', 1],
+            '8.5': ['Транспортная схема', 'ТС', 1],
+            '8.6': ['Обоснование к расчету прочих затрат', 'ОбоснованиеПрочих', 1],
+            '8.7': ['Конъюнктурный анализ', 'КА', 1]
         }
-        self.amount_of_documents_8_type = 0
 
     def show_instruction(self):
         """Кнопка открыть инструкцию"""
         try:
             if not os.path.exists(manual_path):
                 QtWidgets.QMessageBox.warning(self, "Ошибка", 
-                                            "Файл инструкций README.txt не найден!")
+                                            "Файл инструкций не найден!")
                 return
             if sys.platform == 'win32':
                 os.startfile(manual_path)
@@ -288,6 +286,31 @@ class PEDSorterApp(QtWidgets.QMainWindow):
         self.ex_name_comment = self.ui.exname_checkBox.isChecked()
         self.ex_name_len = self.ui.exname_spinBox.value()
 
+        self.TYPES_7_AND_THEIR_CODENAMES = {
+            '7.1': ['Перевозка', 'Перевозка', 1],
+            '7.2': ['Командировочные расходы', 'Командировочные', 1],
+            '7.3': ['Перебазировка', 'Перебазировка', 1],
+            '7.4': ['Затраты на охрану труда', 'ОхранаТруда', 1],
+            '7.5': ['Затраты на проведение пусконаладочных работ (ПНР)', 'ПНР', 1],
+            '7.6': ['Устройство дорог', 'УстройствоДорог', 1],
+            '7.7': ['Дополнительные затраты при производстве работ в зимнее время (ЗУ)', 'ЗУ', 1],
+            '7.8': ['Утилизация отходов', 'УтилизацияОтходов', 1],
+            '7.9': ['Плата за негативное воздействие на окружающую среду (НВОС)', 'НВОС', 1],
+            '7.10': ['Транспортировка', 'Транспортировка', 1],
+            '7.11': ['Плавсредства', 'Плавсредства', 1],
+            '7.12': ['Затраты на мониторинг компонентов окружающей среды (ПЭМ)', 'ПЭМ', 1],
+            '7': ['Расчеты на прочие затраты', '?', 1]
+        }
+        self.TYPES_8_AND_THEIR_CODENAMES = {
+            '8.1': ['Ведомость объемов работ', 'ВОР', 1],
+            '8.2': ['Дефектная ведомость', 'ДВ', 1],
+            '8.3': ['Коммерческое предложение', 'КП', 1],
+            '8.4': ['Транспортная схема', 'ТС', 1],
+            '8.5': ['Обоснование к расчету прочих затрат', 'ОбоснованиеПрочих', 1],
+            '8.6': ['Конъюнктурный анализ', 'КА', 1],
+            '8': ['Подтверждающие документы', '?', 1]
+        }
+
         if self.ui.checkBox_subfolders.isChecked():
             walk_generator = os.walk(self.directory)
         else:
@@ -315,6 +338,8 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                 # Сначала поиск по имени файла
                 type_found_in_name = False
                 for type_id, type_data in self.tags_manager.tags_data.items():
+                    if '7.' in type_id:
+                        continue
                     for tag_pattern in type_data['name_tags']:
                         has_regex_specials = any(char in tag_pattern for char in '.*+?^$[]{}()|\\')
                         if has_regex_specials:
@@ -322,9 +347,8 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                                 if re.search(tag_pattern, filename, re.IGNORECASE):
                                     type = type_data['type']
                                     mask = type_data['mask']
-                                    if type not in ['Подтверждающие документы', 'Расчеты на прочие затраты']:
-                                        type_found_in_name = True
-                                        break
+                                    type_found_in_name = True
+                                    break
                             except re.error:
                                 continue
                         else:
@@ -332,14 +356,13 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                             if tag_pattern.lower() in file_parts:
                                 type = type_data['type']
                                 mask = type_data['mask']
-                                if type not in ['Подтверждающие документы', 'Расчеты на прочие затраты']:
-                                    type_found_in_name = True
-                                    break
+                                type_found_in_name = True
+                                break
                     if type_found_in_name:
                         break
                 
                 # Если в имени не найдено, ищем внутри файла
-                if not type_found_in_name and self.ui.search_in_file_checkBox.isChecked() and type not in ['Подтверждающие документы', 'Расчеты на прочие затраты']:
+                if not type_found_in_name and self.ui.search_in_file_checkBox.isChecked():
                     for type_id, type_data in self.tags_manager.tags_data.items():
                         presence_tags = False
                         # Для PDF
@@ -358,8 +381,9 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                         if presence_tags:
                             type = type_data['type']
                             mask = type_data['mask']
-                            if type not in ['Подтверждающие документы', 'Расчеты на прочие затраты']:
-                                break
+                            break
+                if type == '?':
+                    type_id = 0
                 # вызов функции для создания имени в соответствии с типом файла:
                 if type_id in ['1', '2', '3']:
                     if extension == '.pdf':
@@ -378,10 +402,14 @@ class PEDSorterApp(QtWidgets.QMainWindow):
                     new_name = self.create_name_for_5_specific_types_of_costs(filepath, filename)
                 if type == 'Сравнительная таблица изменения стоимости МТР по договору подряда (Форма 1.3)':
                     new_name = self.create_name_for_6_MTR_cost_change_table(filepath, filename)
-                if type in self.TYPES_7_AND_THEIR_CODENAMES.keys():
-                    new_name = self.create_name_for_7_other_expenses(filename, type)
-                if type in self.TYPES_8_AND_THEIR_CODENAMSE.keys():
-                    new_name = self.create_name_for_8_supporting_documents(filename, type)
+                if type_id in self.TYPES_7_AND_THEIR_CODENAMES.keys():
+                    if extension == '.pdf':
+                        new_name, type, mask = self.create_name_for_7_other_expenses(filename, filepath, pdf_text_cache)
+                    if extension in ['.xls', '.xlsx']:
+                        new_name, type, mask = self.create_name_for_7_other_expenses(filename, filepath, excel_text_cache)
+                if type_id in self.TYPES_8_AND_THEIR_CODENAMES.keys():
+                    new_name = self.create_name_for_8_supporting_documents(filename, type_id)
+
                 # занесение всех полученных данных заносим в словарь
                 self.filenames[filename] = {
                     'type': type,
@@ -454,7 +482,7 @@ class PEDSorterApp(QtWidgets.QMainWindow):
             self.logger.debug(f'прочили PDF {pdf_path}')
             return text.lower()
         except Exception as e:
-            print(f'Ошибка OCR обработки {pdf_path}: {str(e)}')
+            self.logger.error(f'Ошибка OCR обработки {pdf_path}: {str(e)}')
             return ''
 
     def share_info_from_xls_to_duplicates(self):
@@ -637,27 +665,66 @@ class PEDSorterApp(QtWidgets.QMainWindow):
         comment = self._create_comment(filename)
         return f'{const}-{version}{version_number}{comment}'
     
-    def create_name_for_7_other_expenses(self, filename, type):
+    def create_name_for_7_other_expenses(self, filename, filepath, file_data):
         """Создает новые имена для всех файлов типа 'Расчеты на прочие затраты'"""
         version = self.DEFAULT_VERSION
         const = 'ПРОЧ'
         version_number = self.DEFAULT_VERSION_NUMBER
-        type_of_calculation = self.TYPES_7_AND_THEIR_CODENAMES[type]
+        type_of_calculation = '?'
         comment = self._create_comment(filename)
-        return f'{const}-{type_of_calculation}-{version}{version_number}{comment}'
+        lines_to_check = 20
+        amount_of_documents_7_type = 1
+        data_lines = []
+        types_base = self.tags_manager.tags_data
+        if filename.endswith(('.xls', '.xlsx')):
+            if file_data is None:
+                file_data = self.read_xls_xlsx_file(filepath)
+            for i in range(min(lines_to_check, len(file_data))):
+                row_data = ''.join([str(x).lower() for x in file_data.iloc[i].values.tolist() if pd.notna(x)])
+                data_lines.append(row_data)
+        elif filename.endswith('.pdf'):
+            if file_data is None:
+                file_data = self.extract_text_from_pdf_first_page(filepath)
+            data_lines = file_data.split('\n')[:lines_to_check]
+        else:
+            return None
+        for row_data in data_lines:
+            for type_id in self.TYPES_7_AND_THEIR_CODENAMES.keys():
+                for tag in types_base[type_id]['internal_tags']:
+                    if re.search(tag, row_data, re.IGNORECASE):
+                        type_of_calculation = self.TYPES_7_AND_THEIR_CODENAMES[type_id][1]
+                        break
+                if type_of_calculation !='?':
+                    break
+            if type_of_calculation != '?':
+                break
+        amount_of_documents_7_type = self.TYPES_7_AND_THEIR_CODENAMES[type_id][2]
+        self.TYPES_7_AND_THEIR_CODENAMES[type_id][2] += 1
+        comment = self._create_comment(filename)
+        type = self.TYPES_7_AND_THEIR_CODENAMES[type_id][0]
+        if amount_of_documents_7_type > 1:
+            return (f'{const}-{type_of_calculation}-{amount_of_documents_7_type}-{version}{version_number}{comment}',
+                    self.TYPES_7_AND_THEIR_CODENAMES[type_id][0],
+                    types_base[type_id]['mask']
+                    )
+        return (f'{const}-{type_of_calculation}-{version}{version_number}{comment}',
+                self.TYPES_7_AND_THEIR_CODENAMES[type_id][0],
+                types_base[type_id]['mask']
+                )
 
-    def create_name_for_8_supporting_documents(self, filename, type):
+    def create_name_for_8_supporting_documents(self, filename, type_id):
         """Создает новые имена для всех файлов типа 'Подтверждающие документы'"""
         version = self.DEFAULT_VERSION
         const = 'ПОДТВ'
         version_number = self.DEFAULT_VERSION_NUMBER
-        type_of_document = self.TYPES_8_AND_THEIR_CODENAMSE[type]
-        self.amount_of_documents_8_type += 1
+        type_of_document = self.TYPES_8_AND_THEIR_CODENAMES[type_id][1]
+        amount_of_documents_8_type = self.TYPES_8_AND_THEIR_CODENAMES[type_id][2]
+        self.TYPES_8_AND_THEIR_CODENAMES[type_id][2] += 1
         comment = self._create_comment(filename)
         if type_of_document == 'Обоснование к расчету прочих затрат':
-            return f'{const}-{type_of_document}-ТИППРОЧ-{self.amount_of_documents_8_type}-{version}{version_number}{comment}'
+            return f'{const}-{type_of_document}-ТИППРОЧ-{amount_of_documents_8_type}-{version}{version_number}{comment}'
         else:
-            return f'{const}-{type_of_document}-{self.amount_of_documents_8_type}-{version}{version_number}{comment}'
+            return f'{const}-{type_of_document}-{amount_of_documents_8_type}-{version}{version_number}{comment}'
 
     def populate_table(self):
         '''Заполняет таблицу найденными файлами.'''
@@ -875,22 +942,22 @@ def setup_logging():
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    # log_file = os.path.join(log_dir, f'ped_sorter_{datetime.now().strftime('%Y%m%d')}.log')
+    log_file = os.path.join(log_dir, f'ped_sorter_{datetime.now().strftime('%Y%m%d')}.log')
 
     logger = logging.getLogger('PEDSorter')
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-    # file_handler = RotatingFileHandler(
-    #     log_file, maxBytes=5*1024*1024, backupCount=3, encoding='utf-8'
-    # )
-    # file_handler.setFormatter(formatter)
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=5*1024*1024, backupCount=3, encoding='utf-8'
+    )
+    file_handler.setFormatter(formatter)
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
 
-    # logger.addHandler(file_handler)
+    logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
     return logger
